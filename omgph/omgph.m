@@ -16,6 +16,7 @@ function [omega,ph] = omgph(lat,lon,depth)
 % ph = surface water pH value (scalar or vector)
 %
 % function created by Dr. Jessica Tierney, The University of Arizona (2019)
+
 %% set-up
 %get Nobs
 Nobs=length(lat);

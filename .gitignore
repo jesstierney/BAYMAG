@@ -1,1 +1,7 @@
 .DS_Store
+mgpred.d
+mgpred.hpp
+mgpred
+mgpred_sw
+mgpred_sw.hpp
+mgpred_sw.d
