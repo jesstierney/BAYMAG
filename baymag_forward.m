@@ -20,9 +20,10 @@ function mg=baymag_forward(age,t,omega,salinity,pH,clean,species,varargin)
 %   'ruber' = Globigerinoides ruber, white or pink
 %   'bulloides' = Globigerina bulloides
 %   'sacculifer' = Trilobatus sacculifer
-%   'pachy' = Neogloboquadrina pachyderma or Neogloboquadrina incompta
+%   'pachy' = Neogloboquadrina pachyderma
+%   'incompta' = Neogloboquadrina incompta
 %   'all' = pooled calibration, annual SST
-%   'all_sea' = pooles calibration, seasonal SST
+%   'all_sea' = pooled calibration, seasonal SST
 % varargin = three optional arguments:
 %  1: a scalar to choose whether to account for changes in mgca of seawater.
 %  For this to work properly your ages need to be in units of *millions of years*
@@ -60,11 +61,23 @@ else
     error('You entered too many or too few arguments');
 end
 %% prepare data and parameters
-species_list = {'ruber','bulloides','sacculifer','pachy','all','all_sea'};
-%check for known species
+%ensure everything is column vectors.
+t=t(:);
+salinity=salinity(:);
+omega=omega(:);
+pH=pH(:);
+clean=clean(:);
+species_list = {'ruber','bulloides','sacculifer','pachy','incompta','all','all_sea'};
+species_list_model = {'ruber','bulloides','sacculifer','pachy'};
+%check that you have an allowable species
 if ~ismember(species,species_list)
     error('Species not recognized');
 end
+%check for incompta. Change to pachy.
+if ismember(species,{'incompta'})
+    species='pachy';
+else
+end 
 id = (1:1:4);
 %define dimensions
 Nobs=length(t);
@@ -83,7 +96,7 @@ elseif strfind(species,char('all_sea'))==1
 else
     params = load('species_model_params.mat');
     %grab id location for species.
-    id = id(ismember(species_list,species));
+    id = id(ismember(species_list_model,species));
 end
 %get posterior params
 betaT=params.betaT;
@@ -146,3 +159,5 @@ else %if you selected pachyderma or sacculifer, assume no pH sensitivity
 end
 %put values back into standard Mg/Ca units
 mg=exp(lmg);
+%negative values are not allowed
+mg(mg<0)=0;
