@@ -33,6 +33,8 @@ function mg=baymag_forward(age,t,omega,salinity,pH,clean,species,varargin)
 %  2 and 3: a prior mean and prior standard deviation, scalar values, in
 %  Mg/Ca units of mmol/mol. If not entered, it is assumed that no prior is
 %  required.
+%  4: input different bayesian parameters. Should be a string array of size
+%  3 x 1, with each column containing the parameters filename.
 %
 % OUTPUT:
 % mg = N x 1000 ensemble of Mg/Ca values
@@ -47,16 +49,24 @@ function mg=baymag_forward(age,t,omega,salinity,pH,clean,species,varargin)
 
 %% deal with optional arguments
 ng=nargin;
-if ng==10
+if ng==11
     sw=varargin{1};
     prior_mean=varargin{2};
     prior_sig=varargin{3};
+    bayes=varargin{4};
+elseif ng==10
+    sw=varargin{1};
+    prior_mean=varargin{2};
+    prior_sig=varargin{3};
+    bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 elseif ng==9
     error('You entered a prior mean, but not a prior standard deviation');
 elseif ng==8
     sw=varargin{1};
+    bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 elseif ng==7
     sw=0;
+    bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 else
     error('You entered too many or too few arguments');
 end
@@ -87,14 +97,14 @@ clean=clean.*ones(Nobs,1);
 salinity=salinity.*ones(Nobs,1);
 pH=pH.*ones(Nobs,1);
 %load appropriate model
-if  strfind(species,char('all'))==1
-    params = load('pooled_model_params.mat');
+if  strcmp(species,'all')
+    params = load(bayes(1));
     id = 1;
-elseif strfind(species,char('all_sea'))==1
-    params = load('pooled_sea_model_params.mat');
+elseif strcmp(species,'all_sea')
+    params = load(bayes(2));
     id = 1;
 else
-    params = load('species_model_params.mat');
+    params = load(bayes(3));
     %grab id location for species.
     id = id(ismember(species_list_model,species));
 end
