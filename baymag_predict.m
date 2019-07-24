@@ -176,7 +176,7 @@ else
 end
 
 tic
-    fit = stan('file',file_name,'data',mg_dat,'chains',chains,'warmup',warmup,'iter',iters,'thin',thin,'init',mg_init,'verbose',true,'id','run');
+    fit = stan('file',file_name,'data',mg_dat,'chains',chains,'warmup',warmup,'iter',iters,'thin',thin,'init',mg_init,'verbose',true);
 fit.block();
 toc
 %% extract and analyze data
