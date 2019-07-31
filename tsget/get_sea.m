@@ -1,4 +1,6 @@
 function [t_sea,s_sea,months]=get_sea(lat,lon,foram)
+% function [t_sea,s_sea,months]=get_sea(lat,lon,foram)
+%
 % Grabs monthly temperatures and salinities from the World Ocean Atlas 2013
 % climatologies for a given location, and averages values within the
 % optimal (min, max) temperature growth range of the given foraminiferal
@@ -8,24 +10,32 @@ function [t_sea,s_sea,months]=get_sea(lat,lon,foram)
 % KDE in Malevich et al., 2019, Paleoceanography & Paleoclimatology,
 % https://doi.org/10.1029/2019PA003576.
 %
-% INPUTS: 
+% ----- Input -----
 % lat = latitude in decimal degrees (scalar or N x 1 vector)
-% lon = longitude in decimal degrees (scalar or N x 1 vector)
-% foram = species of foram. cell or N x 1 cell array with strings - must
+% lon = longitude in decimal degrees (scalar or N x 1 vector, -180 to 180)
+% foram = species of foram. string or N x 1 string array - must
 % match the size of lat and lon and contain one of the following values:
 %
-% 'ruber'
-% 'bulloides'
-% 'incompta'
-% 'pachy'
-% 'sacculifer'
+% "ruber"
+% "bulloides"
+% "incompta"
+% "pachy"
+% "sacculifer"
 %
-% OUTPUTs:
+% ----- Output -----
 % t_sea = average temperature for months in optimal growth range
 % s_sea = average salinity for months in optimal growth range
 % months = cell array of months that were averaged
 %
+% ----- Dependencies -----
+% 1) woa13_monthly.mat - .mat file containing monthly WOA13 values of SST
+% and SSS.
+% 2) foramseason.csv - .csv file defining min/max values for each species
+% 3) read_foramseason.m - function to import foramseason.csv
+% 4) EarthChordDistances_2.m
+%
 % function created by Dr. Jessica Tierney, The University of Arizona (2019)
+
 %% get Nobs
 Nobs=length(lat);
 %put together entered locations
@@ -55,7 +65,7 @@ woa_obs_s=woa13_vec_s(~isnan(woa13_vec_s(:,1)),:);
 optimin=NaN(Nobs,1);
 optimax=NaN(Nobs,1);
 for i=1:Nobs
-    ind=ismember(foramseason.foram,foram(i));
+    ind=strcmp(foramseason.foram,foram(i));
     %error message if I don't recognize the foram
     if sum(ind)==0
     error('foram type not recognized') 

@@ -1,16 +1,23 @@
 function [t_ann,s_ann]=get_ann(lat,lon)
+% function [t_ann,s_ann]=get_ann(lat,lon)
+%
 % Simple function to grab annual average temperature and salinity from the
 % World Ocean Atlas 2013 for any given location
 %
-% INPUTS: 
+% ----- Input -----
 % lat = latitude in decimal degrees (scalar or N x 1 vector)
-% lon = longitude in decimal degrees (scalar or N x 1 vector)
+% lon = longitude in decimal degrees (scalar or N x 1 vector, -180 to 180)
 %
-% OUTPUTs:
+% ----- Output -----
 % t_ann = mean annual temperature
 % s_ann= mean annual salinity
 %
+% ----- Dependencies -----
+% 1) woa13_annual.mat - .mat file containing WOA13 mean annual SST and SSS.
+% 2) EarthChordDistances_2.m
+%
 % function created by Dr. Jessica Tierney, The University of Arizona (2019)
+
 %% get Nobs
 Nobs=length(lat);
 %put together entered locations

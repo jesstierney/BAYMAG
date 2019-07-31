@@ -1,4 +1,6 @@
-function output=baymag_predict(lat,lon,age,mg,omega,salinity,pH,clean,species,pstd,varargin)
+function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varargin)
+% function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varargin)
+% 
 % BAYMAG inverse model to predict SSTs from given MgCa, salinity, omega, pH,
 % cleaning method, and species group.
 % This code uses STAN: http://mc-stan.org/ for MCMC inference
@@ -6,9 +8,7 @@ function output=baymag_predict(lat,lon,age,mg,omega,salinity,pH,clean,species,ps
 % https://github.com/brian-lau/MatlabStan
 % You need to install STAN and MatlabStan on your system before using this code.
 % 
-% INPUTS:
-% lat = latitude of site (used to pull modern SST/SSS)
-% lon = longitude of site (used to pull modern SST/SSS)
+% ----- Inputs -----
 % age = scalar or N x 1 vector of ages. Needs to be Ma for seawater
 % correction! otherwise units don't matter. 
 % mg = scalar or N x 1 vector of MgCa values
@@ -30,20 +30,25 @@ function output=baymag_predict(lat,lon,age,mg,omega,salinity,pH,clean,species,ps
 % 'incompta' = Neogloboquadrina incompta
 % 'all' = pooled calibration, annual SST
 % 'all_sea' = pooled calibration, seasonal SST
-% varargin = optional arguments, right now there is just one allowed:
+% varargin = optional arguments, right now there is just one:
 %  1: a scalar to choose whether to account for changes in mgca of seawater.
 %  For this to work properly your ages need to be in units of *millions of years*
 %  (Ma)! If this is not entered then no seawater correction is applied.
 %    0 = do not include a sw term
 %    1 = include a sw term
 %
-% NOTES:
+% ----- Notes -----
 % 1) prior mean is set automatically using the Anand03 relationship.
 % 2) No NaNs allowed!
 % 3) incompta and pachy data are calibrated with the pooled pachy/incompta
 %    regression.
+% 4) Known bug - the stan code wants at least two values for Mg/Ca.
+%    This has to do with how stan treats scalars vs vectors. So if you only
+%    want to calibrate a single value of Mg/Ca, please input a second dummy
+%    value.
 %
-% OUTPUTS in structure output:
+% ----- Output -----
+% output: a structure containing the following:
 % rhat = N x 1 convergence statistic. Should be close to 1.
 % neff_ratio = N x 1 ratio of effective sample size to total sample size.
 % Should be above 0.1.
@@ -52,6 +57,16 @@ function output=baymag_predict(lat,lon,age,mg,omega,salinity,pH,clean,species,ps
 % modernSST = modern, seasonally-averaged SST at site from World Ocean Atlas 2013
 % seasonality = estimate of seasonality of derived SSTs at site, based on modern
 % sediment trap flux data
+%
+% ----- Dependencies -----
+% 1) pooled_model_params.mat, pooled_sea_model_params.mat,
+% species_model_params.mat: .mat files with default Bayesian parameters
+% 2) mgsw_iters.mat: .mat file with Gaussian smoothed estimates of Mg/Ca of
+% seawater through time.
+% 3) mgpred_sw.stan and mgpred.stan: stan code to run the models.
+% 4) MatlabStan package (see note above)
+% 5) mcstan (see note above)
+% 6) ChainConvergence.m: code to calculate Rhat and Neff
 %
 % function created by Dr. Jessica Tierney, The University of Arizona (2019)
 
@@ -202,10 +217,6 @@ output.ens=sst(:,1:10:end);
 pers3=[.025 .5 .975].*size(sst,2);
 sst_s=sort(sst,2);
 output.SST=sst_s(:,pers3);
-
-%% extract modern sst and seasonality
-% note call to nearestgriddedvalue_mg
-[output.modernSST,output.seasonality] = nearestgriddedvalue_mg(lat,lon,species2);
 % also print out the species used
 output.species = species2;
 %% some sanity check plots

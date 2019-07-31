@@ -1,9 +1,11 @@
 function mg=baymag_forward(age,t,omega,salinity,pH,clean,species,varargin)
+% function mg=baymag_forward(age,t,omega,salinity,pH,clean,species,varargin)
+%
 % BAYMAG forward model for Mg/Ca of planktic foraminifera.
 % Predicts Mg/Ca in foraminiferal calcite from given temperature, salinity,
 % omega, cleaning method, and species group.
 %
-% INPUTS:
+% ----- Input -----
 % age = scalar or N x 1 vector of ages. Needs to be Ma for seawater
 % correction! otherwise units don't matter. 
 % t = scalar or N x 1 vector of SST values.
@@ -36,10 +38,13 @@ function mg=baymag_forward(age,t,omega,salinity,pH,clean,species,varargin)
 %  4: input different bayesian parameters. Should be a string array of size
 %  3 x 1, with each column containing the parameters filename.
 %
-% OUTPUT:
+% ----- Output -----
 % mg = N x 1000 ensemble of Mg/Ca values
 %
-% EXAMPLES:
+% ----- Dependencies -----
+% 1) pooled_model_params.mat, pooled_sea_model_params.mat,
+% species_model_params.mat: .mat files with default Bayesian parameters
+% ----- Examples -----
 %
 % mg = baymag_forward(age,t,1.05,35,8,0,'ruber');
 % mg = baymag_forward(age,t,1.05,35,8,0,'ruber',1);
