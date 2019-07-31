@@ -5,3 +5,9 @@ mgpred
 mgpred_sw
 mgpred_sw.hpp
 mgpred_sw.d
+mgpred_werr
+mgpred_werr.hpp
+mgpred_werr.d
+mgpred_werr_sw
+mgpred_werr_sw.hpp
+mgpred_werr_sw.d

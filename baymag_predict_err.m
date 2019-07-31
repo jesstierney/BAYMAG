@@ -1,8 +1,10 @@
-function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varargin)
-% function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varargin)
+function output=baymag_predict_err(age,mg,omega_m,omega_s,salinity_m,salinity_s,pH_m,pH_s,clean,species,pstd,varargin)
+% function output=baymag_predict_err(age,mg,omega,salinity,pH,clean,species,pstd,varargin)
 % 
 % BAYMAG inverse model to predict SSTs from given MgCa, salinity, omega, pH,
 % cleaning method, and species group.
+% This version, baymag_predict_err, allows the user to input prior means and standard
+% deviations for omega, salinity, and pH.
 % This code uses STAN: http://mc-stan.org/ for MCMC inference
 % STAN is accessed through the Matlab wrapper MatlabStan, available here:
 % https://github.com/brian-lau/MatlabStan
@@ -12,11 +14,17 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 % age = scalar or N x 1 vector of ages. Needs to be Ma for seawater
 % correction! otherwise units don't matter. 
 % mg = scalar or N x 1 vector of MgCa values
-% omega = scalar or N x 1 vector of bottom water saturation state
-% salinity = scalar or N x 1 vector of salinity (psu)
-% pH = scalar or N x 1 vector of pH (total scale). If you are using a
+% omega_m = prior mean for bottom water saturation state (scalar or N x 1
+% vector)
+% omega_s = prior standard deviation for bottom water saturation state (scalar or N x 1
+% vector)
+% salinity_m = prior mean for salinity (scalar or N x 1 vector)
+% salinity_s = prior standard deviation for salinity (scalar or N x 1 vector)
+% pH_m = prior mean for pH (scalar or N x 1 vector). If you are using a
 % species not sensitive to pH you can enter a dummy value.
-% clean = scalar to describe cleaning technique:
+% pH_s = prior standard deviation for pH (scalar or N x 1 vector). If you are using a
+% species not sensitive to pH you can enter a dummy value.
+% clean = scalar or N x 1 vector to describe cleaning technique:
 %  1 = reductive 
 %  0 = oxidative
 %   values between 0 and 1 are allowed and will be treated as a mix of
@@ -30,7 +38,7 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 % 'all' = pooled calibration, annual SST
 % 'all_sea' = pooled calibration, seasonal SST
 % pstd = prior standard deviation in degree C. Suggested values: 5-10C.
-% varargin = optional arguments
+% varargin = optional arguments, right now there is just one:
 %  1: a scalar to choose whether to account for changes in mgca of seawater.
 %  For this to work properly your ages need to be in units of *millions of years*
 %  (Ma)! If this is not entered then no seawater correction is applied.
@@ -71,13 +79,13 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 
 %% deal with optional arguments
 ng=nargin;
-if ng==10
+if ng==13
     sw=varargin{1};
     bayes=varargin{2};      
-elseif ng==9
+elseif ng==12
     sw=varargin{1};
     bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
-elseif ng==8
+elseif ng==11
     sw=0;
     bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 else
@@ -90,9 +98,12 @@ path_ind=path_ind(1:end-16);
 %ensure everything is column vectors.
 age=age(:);
 mg=mg(:);
-salinity=salinity(:);
-omega=omega(:);
-pH=pH(:);
+salinity_m=salinity_m(:);
+salinity_s=salinity_s(:);
+omega_m=omega_m(:);
+omega_s=omega_s(:);
+pH_m=pH_m(:);
+pH_s=pH_s(:);
 clean=clean(:);
 species_list = {'ruber','bulloides','sacculifer','pachy','incompta','all','all_sea'};
 species_list_model = {'ruber','bulloides','sacculifer','pachy'};
@@ -112,10 +123,13 @@ id = (1:1:4);
 %define dimensions
 Nobs=length(mg);
 %transform variables and vectorize
-omega=(omega.^-2).*ones(Nobs,1);
+omega=(omega_m.^-2).*ones(Nobs,1);
+omega_s=mean([((omega_m-omega_s).^-2)-omega_m omega_m - ((omega_m+omega_s).^-2)],2).*ones(Nobs,1);
 clean=clean.*ones(Nobs,1);
-salinity=salinity.*ones(Nobs,1);
-pH=pH.*ones(Nobs,1);
+salinity=salinity_m.*ones(Nobs,1);
+salinity_s=salinity_s.*ones(Nobs,1);
+pH=pH_m.*ones(Nobs,1);
+pH_s=pH_s.*ones(Nobs,1);
 %check for NaNs
 dats=[age mg omega clean salinity pH];
 if sum(isnan(dats(:)))>0
@@ -170,23 +184,20 @@ end
 %assign prior standard deviation
 prior_sig=pstd;
 
-if sw==1
 %put data into struct
-mg_dat = struct('N',Nobs,'M',Mparams,'omega',omega,'clean',clean,'s',salinity,'ph',pH,...
-    'mg',log(mg),'betaT',betaT,'betaO',betaO,'betaC',betaC,'betaS',betaS,'betaP',betaP,...
+if sw==1
+mg_dat = struct('N',Nobs,'M',Mparams,'omega_m',omega,'omega_s',omega_s,'clean',clean,'s_m',salinity,'s_s',salinity_s,'ph_m',pH,... %,
+    'ph_s',pH_s,'mg',log(mg),'betaT',betaT,'betaO',betaO,'betaC',betaC,'betaS',betaS,'betaP',betaP,...
     'sigma',sigma,'alpha',alpha,'prior_mu',prior_mu,'prior_sig',prior_sig,'id',id,'mgsw',mgsw);
 else
-%put data into struct
-mg_dat = struct('N',Nobs,'M',Mparams,'omega',omega,'clean',clean,'s',salinity,'ph',pH,...
-    'mg',log(mg),'betaT',betaT,'betaO',betaO,'betaC',betaC,'betaS',betaS,'betaP',betaP,...
+mg_dat = struct('N',Nobs,'M',Mparams,'omega_m',omega,'omega_s',omega_s,'clean',clean,'s_m',salinity,'s_s',salinity_s,'ph_m',pH,... %,
+    'ph_s',pH_s,'mg',log(mg),'betaT',betaT,'betaO',betaO,'betaC',betaC,'betaS',betaS,'betaP',betaP,...
     'sigma',sigma,'alpha',alpha,'prior_mu',prior_mu,'prior_sig',prior_sig,'id',id);
 end
+%initialize to improve convergence
+mg_init = struct('t',repmat(prior_mu,1,Mparams),'s',repmat(salinity,1,Mparams),'ph',repmat(pH,1,Mparams),'omega',repmat(omega,1,Mparams));
 
-%initialize at prior mean because it improves convergence
-mg_init = struct('t',repmat(prior_mu,1,Mparams));
-
-%stan settings. The absolute minimum so that the model runs fast. Increase
-%warmup and iters if you are not getting good convergence.
+%stan settings. Designed for fast convergence, can be changed if necessary.
 chains=4;
 warmup=150;
 iters=100;
@@ -196,9 +207,9 @@ thin=4;
 % have to compile the model. Once the models are compiled subsequent runs
 % are faster.
 if sw==1
-    file_name=strcat(path_ind,'mgpred_sw.stan');
+    file_name=strcat(path_ind,'mgpred_werr_sw.stan');
 else
-    file_name=strcat(path_ind,'mgpred.stan');
+    file_name=strcat(path_ind,'mgpred_werr.stan');
 end
 
 tic
@@ -206,29 +217,75 @@ tic
 fit.block();
 toc
 %% extract and analyze data
-samples=NaN(chains,iters/thin,Nobs,Mparams);
+samples_t=NaN(chains,iters/thin,Nobs,Mparams);
+samples_s=NaN(chains,iters/thin,Nobs,Mparams);
+samples_o=NaN(chains,iters/thin,Nobs,Mparams);
+samples_p=NaN(chains,iters/thin,Nobs,Mparams);
 for i=1:chains
-    samples(i,:,:,:)=fit.sim.samples(i).t;
+    samples_t(i,:,:,:)=fit.sim.samples(i).t;
+    samples_s(i,:,:,:)=fit.sim.samples(i).s;
+    samples_o(i,:,:,:)=fit.sim.samples(i).omega;
+    samples_p(i,:,:,:)=fit.sim.samples(i).ph;
 end
 %reshape for Rhat, Neff calc
-samples=permute(samples,[1 3 2 4]);
-samples_r=reshape(samples,chains,Nobs,iters/thin*Mparams);
+samples_t=permute(samples_t,[1 3 2 4]);
+samples_s=permute(samples_s,[1 3 2 4]);
+samples_o=permute(samples_o,[1 3 2 4]);
+samples_p=permute(samples_p,[1 3 2 4]);
+samples_r_t=reshape(samples_t,chains,Nobs,iters/thin*Mparams);
+samples_r_s=reshape(samples_s,chains,Nobs,iters/thin*Mparams);
+samples_r_o=reshape(samples_o,chains,Nobs,iters/thin*Mparams);
+samples_r_p=reshape(samples_p,chains,Nobs,iters/thin*Mparams);
 
-output.rhat=NaN(Nobs,1);
-neff=NaN(Nobs,1);
+output.rhat_t=NaN(Nobs,1);
+output.rhat_s=NaN(Nobs,1);
+output.rhat_o=NaN(Nobs,1);
+output.rhat_p=NaN(Nobs,1);
+neff_t=NaN(Nobs,1);
+neff_s=NaN(Nobs,1);
+neff_o=NaN(Nobs,1);
+neff_p=NaN(Nobs,1);
 %note call to ChainConvergence
 for i=1:Nobs
-    [output.rhat(i),neff(i)]=ChainConvergence(squeeze(samples_r(:,i,:)),chains);
+    [output.rhat_t(i),neff_t(i)]=ChainConvergence(squeeze(samples_r_t(:,i,:)),chains);
+    [output.rhat_s(i),neff_s(i)]=ChainConvergence(squeeze(samples_r_s(:,i,:)),chains);
+    [output.rhat_o(i),neff_o(i)]=ChainConvergence(squeeze(samples_r_o(:,i,:)),chains);
+    [output.rhat_p(i),neff_p(i)]=ChainConvergence(squeeze(samples_r_p(:,i,:)),chains);
 end
-output.neff_ratio=neff./(chains*iters/thin*Mparams);
-sst=permute(samples_r,[2 1 3]);
-sst=reshape(sst,Nobs,chains*iters/thin*Mparams);
+output.neff_ratio_t=neff_t./(chains*iters/thin*Mparams);
+output.neff_ratio_s=neff_s./(chains*iters/thin*Mparams);
+output.neff_ratio_o=neff_o./(chains*iters/thin*Mparams);
+output.neff_ratio_p=neff_p./(chains*iters/thin*Mparams);
+
+t_out=permute(samples_r_t,[2 1 3]);
+t_out=reshape(t_out,Nobs,chains*iters/thin*Mparams);
+
+s_out=permute(samples_r_s,[2 1 3]);
+s_out=reshape(s_out,Nobs,chains*iters/thin*Mparams);
+
+omega_out=permute(samples_r_o,[2 1 3]);
+omega_out=reshape(omega_out,Nobs,chains*iters/thin*Mparams);
+
+ph_out=permute(samples_r_p,[2 1 3]);
+ph_out=reshape(ph_out,Nobs,chains*iters/thin*Mparams);
+
 %save 2000 iterations in output
-output.ens=sst(:,1:10:end);
-pers3=[.025 .5 .975].*size(sst,2);
-sst_s=sort(sst,2);
+output.ens.t=t_out(:,1:10:end);
+output.ens.s=s_out(:,1:10:end);
+output.ens.omega=omega_out(:,1:10:end);
+output.ens.ph=ph_out(:,1:10:end);
+
+pers3=[.025 .5 .975].*size(t_out,2);
+sst_s=sort(t_out,2);
+sss_s=sort(s_out,2);
+om_s=sort(omega_out,2);
+ph_s=sort(ph_out,2);
+
 output.SST=sst_s(:,pers3);
-% also print out the species used
+output.SSS=sss_s(:,pers3);
+output.Omega=om_s(:,pers3);
+output.Ph=ph_s(:,pers3);
+%also print out the species used
 output.species = species2;
 %% some sanity check plots
 %plot prior and posterior.
@@ -236,7 +293,7 @@ f1=figure(1); clf;
 set(f1,'pos',[50 700 400 400]);
 xt=(-2:.1:40)';
 prior=normpdf(xt,mean(prior_mu),pstd);
-post=ksdensity(output.ens(:),xt);
+post=ksdensity(output.ens.t(:),xt);
 pr=plot(xt,prior,'k-','linewidth',1); hold on;
 pt=plot(xt,post,'b-','linewidth',1);
 legend([pr pt],'Prior','Posterior');
