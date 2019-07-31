@@ -21,7 +21,6 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 %  0 = oxidative
 %   values between 0 and 1 are allowed and will be treated as a mix of
 %   cleaning methods.
-% pstd = prior standard deviation in degree C. Suggested values: 5-10C.
 % species = string of target species. seven options:
 % 'ruber' = Globigerinoides ruber, white or pink
 % 'bulloides' = Globigerina bulloides
@@ -30,12 +29,15 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 % 'incompta' = Neogloboquadrina incompta
 % 'all' = pooled calibration, annual SST
 % 'all_sea' = pooled calibration, seasonal SST
+% pstd = prior standard deviation in degree C. Suggested values: 5-10C.
 % varargin = optional arguments, right now there is just one:
 %  1: a scalar to choose whether to account for changes in mgca of seawater.
 %  For this to work properly your ages need to be in units of *millions of years*
 %  (Ma)! If this is not entered then no seawater correction is applied.
 %    0 = do not include a sw term
 %    1 = include a sw term
+%  2: input different bayesian parameters. Should be a string array of size
+%  3 x 1, with each column containing the parameters filename.
 %
 % ----- Notes -----
 % 1) prior mean is set automatically using the Anand03 relationship.
@@ -54,9 +56,6 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 % Should be above 0.1.
 % SST = 2.5%, 50%, and 97.5% levels of predictions
 % ens = N x 2000 ensemble of predicted SSTs
-% modernSST = modern, seasonally-averaged SST at site from World Ocean Atlas 2013
-% seasonality = estimate of seasonality of derived SSTs at site, based on modern
-% sediment trap flux data
 %
 % ----- Dependencies -----
 % 1) pooled_model_params.mat, pooled_sea_model_params.mat,
@@ -72,10 +71,15 @@ function output=baymag_predict(age,mg,omega,salinity,pH,clean,species,pstd,varar
 
 %% deal with optional arguments
 ng=nargin;
-if ng==11
+if ng==10
     sw=varargin{1};
-elseif ng==10
+    bayes=varargin{2};      
+elseif ng==9
+    sw=varargin{1};
+    bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
+elseif ng==8
     sw=0;
+    bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 else
     error('You entered too many or too few arguments');
 end
@@ -83,6 +87,13 @@ end
 path_ind=which('baymag_predict');
 path_ind=path_ind(1:end-16);
 %% prepare data and parameters
+%ensure everything is column vectors.
+age=age(:);
+mg=mg(:);
+salinity=salinity(:);
+omega=omega(:);
+pH=pH(:);
+clean=clean(:);
 species_list = {'ruber','bulloides','sacculifer','pachy','incompta','all','all_sea'};
 species_list_model = {'ruber','bulloides','sacculifer','pachy'};
 %check that you have an allowable species
@@ -111,14 +122,14 @@ if sum(isnan(dats(:)))>0
     error('You got NaNs! Get rid of yer NaNs')
 end
 %load appropriate model
-if  strfind(species,char('all'))==1
-    params = load('pooled_model_params.mat');
+if  strcmp(species,'all')
+    params = load(bayes(1));
     id = 1;
-elseif strfind(species,char('all_sea'))==1
-    params = load('pooled_sea_model_params.mat');
+elseif strcmp(species,'all_sea')
+    params = load(bayes(2));
     id = 1;
 else
-    params = load('species_model_params.mat');
+    params = load(bayes(3));
     %grab id location for species.
     id = id(ismember(species_list_model,species));
 end
