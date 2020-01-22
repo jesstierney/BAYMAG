@@ -4,12 +4,17 @@ function [salinity,ph]=get_phsal(age,sal,ph_in)
 %technique in MgCaRB v1 by David Evans (2019).
 %
 %INPUTS:
-%age = age in yr BP
+%age = age in yr BP - must be younger than 240 ka.
 %sal = modern observed salinity
 %ph = modern observed ph
 load('antco2.mat','age_gas_calBP','co2_ppm');
 load('sealevel.mat','seaLevel');
 
+if max(age) > max(seaLevel(:,1).*1000)
+    error('Your time series is too long to use get_phsal.m. Sorry!')
+else
+end
+   
 %assumptions about 2-sigma bounds of change in salinity and ph:
 lgm_sal = 0.6; %psu
 lgm_ph = 0.1; %ph total
