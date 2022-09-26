@@ -108,17 +108,16 @@ for i=1:Nobs
     tloc=coords(i,:);
     %first check for GoM locations
     if ind_g(i)
-        d1=findnearest(depth(i),gom.depth);
-        omega(i)=gom.omega(d1(1));
+        [~,d1]=min(abs(depth(i)-gom.depth));
+        omega(i)=gom.omega(d1);
         %notice we are grabbing surface ph
         ph(i)=gom.ph(1);
         dists_om(i)=0;
         dists_ph(i)=0;
     %next check for Carib location
     elseif ind_c(i)
-        d1=findnearest(depth(i),wdepth);
-        d1=d1(1);
-        lat1=findnearest(tloc(2),lat_carib);
+        [~,d1]=min(abs(depth(i)-wdepth));
+        lat1=min(abs(tloc(2)-lat_carib));
         ph(i)=ph_carib(lat1(1));
         omega(i)=omega_carib(lat1(1),d1);
         %loop in case you grab a NaN for omega
@@ -138,8 +137,7 @@ for i=1:Nobs
         if isnan(depth(i))
             omega(i)=NaN;
         else
-        dnew=findnearest(depth(i),wdepth);
-        dnew=dnew(1);
+        [~,dnew]=min(abs(depth(i)-wdepth));
         [dmin,imin]=min(EarthChordDistances_2(locs_obs_omega{dnew},tloc));
         %if omega is greater than cutoff, search nearby depths
         while dmin > max_dist
