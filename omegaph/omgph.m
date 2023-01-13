@@ -117,7 +117,7 @@ for i=1:Nobs
     %next check for Carib location
     elseif ind_c(i)
         [~,d1]=min(abs(depth(i)-wdepth));
-        lat1=min(abs(tloc(2)-lat_carib));
+        [~,lat1]=min(abs(tloc(2)-lat_carib));
         ph(i)=ph_carib(lat1(1));
         omega(i)=omega_carib(lat1(1),d1);
         %loop in case you grab a NaN for omega
