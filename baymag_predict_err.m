@@ -43,7 +43,8 @@ function output=baymag_predict_err(age,mg,omega_m,omega_s,salinity_m,salinity_s,
 %  For this to work properly your ages need to be in units of *millions of years*
 %  (Ma)! If this is not entered then no seawater correction is applied.
 %    0 = do not include a sw term
-%    1 = include a sw term
+%    1 = include a sw term - original values from the 2019 paper
+%    2 = include a sw term - v2 values incl Na/Ca (Rosenthal et al 2022) 
 %  2: input different bayesian parameters. Should be a string array of size
 %  3 x 1, with each column containing the parameters filename.
 %
@@ -170,6 +171,15 @@ if sw==1
     mg_mod=mg_smooth(1,:);
     mgsw=interp1(xt,mg_smooth,age,'linear','extrap');
     %ratio to modern value, convert to log units
+    mgsw=log(mgsw./repmat(mg_mod,Nobs,1));
+elseif sw==2
+    %load MgCa_sw parameters
+    load('mgsw_iters_v2.mat','xt','mg_smooth');
+    %hold onto modern value
+    mg_mod=mg_smooth(1,:);
+    %interpolate to given ages
+    mgsw=interp1(xt,mg_smooth,age);
+    %ratio to modern value, take log value
     mgsw=log(mgsw./repmat(mg_mod,Nobs,1));
 else
 end

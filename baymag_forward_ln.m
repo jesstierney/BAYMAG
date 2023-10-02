@@ -31,7 +31,8 @@ function lmg=baymag_forward_ln(age,t,omega,salinity,pH,clean,species,varargin)
 %  For this to work properly your ages need to be in units of *millions of years*
 %  (Ma)! If this is not entered then no seawater correction is applied.
 %    0 = do not include a sw term
-%    1 = include a sw term
+%    1 = include a sw term - original values from the 2019 paper
+%    2 = include a sw term - v2 values incl Na/Ca (Rosenthal et al 2022) 
 %  2 and 3: a prior mean and prior standard deviation, scalar values, in
 %  Mg/Ca units of mmol/mol. If not entered, it is assumed that no prior is
 %  required.
@@ -129,6 +130,15 @@ Nparams=length(betaT);
 if sw==1
    %load MgCa_sw parameters
     load('mgsw_iters.mat','xt','mg_smooth');
+    %hold onto modern value
+    mg_mod=mg_smooth(1,:);
+    %interpolate to given ages
+    mgsw=interp1(xt,mg_smooth,age);
+    %ratio to modern value, take log value
+    mgsw=log(mgsw./repmat(mg_mod,Nobs,1));
+elseif sw==2
+    %load MgCa_sw parameters
+    load('mgsw_iters_v2.mat','xt','mg_smooth');
     %hold onto modern value
     mg_mod=mg_smooth(1,:);
     %interpolate to given ages
