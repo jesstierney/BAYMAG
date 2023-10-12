@@ -11,3 +11,16 @@ mgpred_werr.d
 mgpred_werr_sw
 mgpred_werr_sw.hpp
 mgpred_werr_sw.d
+
+# Matlab autosaves
+**.asv
+
+# stan csvs
+output-1.csv
+output-2.csv
+output-3.csv
+output-4.csv
+
+# Stan temps
+temp.data.R
+temp.init.R

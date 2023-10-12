@@ -33,10 +33,13 @@ function lmg=baymag_forward_ln(age,t,omega,salinity,pH,clean,species,varargin)
 %    0 = do not include a sw term
 %    1 = include a sw term - original values from the 2019 paper
 %    2 = include a sw term - v2 values incl Na/Ca (Rosenthal et al 2022) 
-%  2 and 3: a prior mean and prior standard deviation, scalar values, in
+%  2: a value for H, the non-linear power component of the Mg/Casw to
+%  Mg/Caforam relationship, to use in the seawater correction. Default is 1
+%  (no non-linearity).
+%  3 and 4: a prior mean and prior standard deviation, scalar values, in
 %  Mg/Ca units of mmol/mol. If not entered, it is assumed that no prior is
 %  required.
-%  4: input different bayesian parameters. Should be a string array of size
+%  5: input different bayesian parameters. Should be a string array of size
 %  3 x 1, with each column containing the parameters filename.
 %
 % ----- Output -----
@@ -55,23 +58,31 @@ function lmg=baymag_forward_ln(age,t,omega,salinity,pH,clean,species,varargin)
 
 %% deal with optional arguments
 ng=nargin;
-if ng==11
+if ng==12
     sw=varargin{1};
-    prior_mean=varargin{2};
-    prior_sig=varargin{3};
-    bayes=varargin{4};
-elseif ng==10
+    H=varargin{2};
+    prior_mean=varargin{3};
+    prior_sig=varargin{4};
+    bayes=varargin{5};
+elseif ng==11
     sw=varargin{1};
-    prior_mean=varargin{2};
-    prior_sig=varargin{3};
+    H=varargin{2};
+    prior_mean=varargin{3};
+    prior_sig=varargin{4};
     bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
-elseif ng==9
+elseif ng==10
     error('You entered a prior mean, but not a prior standard deviation');
+elseif ng==9
+    sw=varargin{1};
+    H=varargin{2};
+    bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 elseif ng==8
     sw=varargin{1};
+    H=1;
     bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 elseif ng==7
     sw=0;
+    H=1;
     bayes=["pooled_model_params.mat";"pooled_sea_model_params.mat";"species_model_params.mat"];
 else
     error('You entered too many or too few arguments');
@@ -134,8 +145,8 @@ if sw==1
     mg_mod=mg_smooth(1,:);
     %interpolate to given ages
     mgsw=interp1(xt,mg_smooth,age);
-    %ratio to modern value, take log value
-    mgsw=log(mgsw./repmat(mg_mod,Nobs,1));
+    %ratio to modern value, convert to log units, include H if given
+    mgsw=log((mgsw./repmat(mg_mod,Nobs,1)).^H);
 elseif sw==2
     %load MgCa_sw parameters
     load('mgsw_iters_v2.mat','xt','mg_smooth');
@@ -143,8 +154,8 @@ elseif sw==2
     mg_mod=mg_smooth(1,:);
     %interpolate to given ages
     mgsw=interp1(xt,mg_smooth,age);
-    %ratio to modern value, take log value
-    mgsw=log(mgsw./repmat(mg_mod,Nobs,1));
+    %ratio to modern value, convert to log units, include H if given
+    mgsw=log((mgsw./repmat(mg_mod,Nobs,1)).^H);
 else
     mgsw=0;
 end
